@@ -1,8 +1,8 @@
 export interface ClientData {
-  name: string;
-  email: string;
-  nextSession: string;
-  status: 'Active' | 'Inactive';
+  name?: string | string[] | { given?: string[], family?: string, prefix?: string[] };
+  email?: string;
+  nextSession?: string;
+  status?: 'Active' | 'Inactive';
 }
 
 export interface Client extends ClientData {
@@ -13,4 +13,10 @@ export interface Client extends ClientData {
     valueString?: string;
     valueDateTime?: string;
   }>;
+}
+
+export interface Document {
+  id: string;
+  title: string;
+  content: string;
 }

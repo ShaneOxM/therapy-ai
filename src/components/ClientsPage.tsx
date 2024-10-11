@@ -8,15 +8,24 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AddClientModal from './AddClientModal';
 import { Client, ClientData } from '@/types';
+import { searchClients, createClient } from '@/utils/healthLakeUtils';
 
-// Remove this interface as it's now defined in @/types
-// interface Client {
-//   id: string;
-//   name: string;
-//   email: string;
-//   nextSession: string;
-//   status: 'Active' | 'Inactive';
-// }
+// Add this helper function at the top of the file
+function formatName(name: ClientData['name']): string {
+  if (typeof name === 'string') {
+    return name;
+  }
+  if (Array.isArray(name)) {
+    return name.join(' ');
+  }
+  if (typeof name === 'object' && name !== null) {
+    return [name.prefix, name.given, name.family]
+      .flat()
+      .filter(Boolean)
+      .join(' ');
+  }
+  return 'Unnamed Client';
+}
 
 const ClientsPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -33,12 +42,8 @@ const ClientsPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/clients');
-      if (!response.ok) {
-        throw new Error('Failed to fetch clients');
-      }
-      const data = await response.json();
-      setClients(data);
+      const fetchedClients = await searchClients();
+      setClients(fetchedClients);
     } catch (error) {
       console.error('Error fetching clients:', error);
       setError('Failed to load clients. Please try again later.');
@@ -48,26 +53,15 @@ const ClientsPage: React.FC = () => {
   };
 
   const filteredClients = clients.filter(client =>
-    (client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (formatName(client.name).toLowerCase().includes(searchTerm.toLowerCase()) || 
      client?.email?.toLowerCase().includes(searchTerm.toLowerCase())) ?? false
   );
 
   const handleAddClient = async (newClient: ClientData) => {
     try {
-      const response = await fetch('/api/clients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newClient),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add client');
-      }
-
-      const addedClient = await response.json();
+      const addedClient = await createClient(newClient);
       setClients([...clients, addedClient]);
+      setIsAddClientModalOpen(false);
     } catch (error) {
       console.error('Error adding client:', error);
       setError('Failed to add client. Please try again.');
@@ -115,9 +109,9 @@ const ClientsPage: React.FC = () => {
                       <TableCell className="font-medium">
                         <div className="flex items-center">
                           <Avatar className="h-8 w-8 mr-2">
-                            <AvatarFallback>{client.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            <AvatarFallback>{formatName(client.name).split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          {client.name}
+                          {formatName(client.name)}
                         </div>
                       </TableCell>
                       <TableCell>{client.email}</TableCell>

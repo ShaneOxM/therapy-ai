@@ -1,49 +1,46 @@
 'use client';
 
 import React, { useState, useEffect } from 'react'
-import { Bell, Calendar, Clipboard, FileText, Home, Loader2, MessageSquare, Mic, Plus, Settings, Users, Book } from 'lucide-react'
+import { Bell, Plus, Send, Mic, Calendar, FileText, Users, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 import { Progress } from "./ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import { ScrollArea } from "./ui/scroll-area"
 import AddClientModal from './AddClientModal';
+import { Client, ClientData } from '@/types';
+import { NotesComponent } from './NotesComponent';
+import { motion } from "framer-motion";
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
+function formatName(name: ClientData['name']): string {
+  if (typeof name === 'string') {
+    return name;
+  }
+  if (Array.isArray(name)) {
+    return name.join(' ');
+  }
+  if (typeof name === 'object' && name !== null) {
+    return [name.prefix, name.given, name.family]
+      .flat()
+      .filter(Boolean)
+      .join(' ');
+  }
+  return 'Unnamed Client';
 }
 
-interface Client {
-  name: string
-  nextSession: string
-}
-
-interface Workload {
-  clientsThisWeek: number
-  totalClients: number
-  notesToComplete: number
-}
-
-interface Insights {
-  trends: string
-  predictions: string
-}
-
-export default function TherapistDashboard() {
-  const [isRecording, setIsRecording] = useState<boolean>(false)
-  const [chatMessage, setChatMessage] = useState<string>('')
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    { role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you with your cases today?" },
-  ])
-
+export const TherapistDashboard: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([])
-  const [notes, setNotes] = useState<string[]>([])
-  const [workload, setWorkload] = useState<Workload>({ clientsThisWeek: 0, totalClients: 0, notesToComplete: 0 })
-  const [insights, setInsights] = useState<Insights>({ trends: '', predictions: '' })
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'assistant', content: string}[]>([
+    {role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you with your cases today?"}
+  ]);
+  const [workload, setWorkload] = useState({
+    clientsThisWeek: 0,
+    totalClients: 0,
+    notesToComplete: 0,
+  });
 
   useEffect(() => {
     fetchData()
@@ -51,61 +48,23 @@ export default function TherapistDashboard() {
 
   const fetchData = async () => {
     try {
-      const [clientsRes, notesRes, workloadRes, insightsRes] = await Promise.all([
-        fetch('/api/clients'),
-        fetch('/api/notes'),
-        fetch('/api/workload'),
-        fetch('/api/insights')
-      ]);
+      const clientsRes = await fetch('/api/clients');
+      const workloadRes = await fetch('/api/workload');
       
       if (!clientsRes.ok) throw new Error('Failed to fetch clients');
-      const clientsData: Client[] = await clientsRes.json();
-      
-      if (!notesRes.ok) throw new Error('Failed to fetch notes');
-      const notesData: string[] = await notesRes.json();
-      
       if (!workloadRes.ok) throw new Error('Failed to fetch workload');
-      const workloadData: Workload = await workloadRes.json();
-      
-      if (!insightsRes.ok) throw new Error('Failed to fetch insights');
-      const insightsData: Insights = await insightsRes.json();
+
+      const clientsData: Client[] = await clientsRes.json();
+      const workloadData = await workloadRes.json();
 
       setClients(clientsData);
-      setNotes(notesData);
       setWorkload(workloadData);
-      setInsights(insightsData);
     } catch (error) {
       console.error('Error fetching data:', error);
-      // Optionally set an error state here to display to the user
     }
   };
 
-  const startRecording = () => {
-    setIsRecording(true)
-    // Placeholder for actual recording logic
-    setTimeout(() => setIsRecording(false), 3000)
-  }
-
-  const sendChatMessage = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (chatMessage.trim()) {
-      setChatHistory([...chatHistory, { role: 'user', content: chatMessage }])
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: chatMessage })
-        })
-        const data = await response.json()
-        setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }])
-      } catch (error) {
-        console.error('Error sending message:', error)
-      }
-      setChatMessage('')
-    }
-  }
-
-  const handleAddClient = async (newClient: Omit<Client, 'id'>) => {
+  const handleAddClient = async (newClient: ClientData) => {
     try {
       const response = await fetch('/api/clients', {
         method: 'POST',
@@ -119,234 +78,215 @@ export default function TherapistDashboard() {
         throw new Error('Failed to add client');
       }
 
-      const addedClient = await response.json();
+      const addedClient: Client = await response.json();
       setClients([...clients, addedClient]);
     } catch (error) {
       console.error('Error adding client:', error);
-      // You might want to show an error message to the user here
+    }
+  };
+
+  const sendChatMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (chatMessage.trim()) {
+      setChatHistory([...chatHistory, {role: 'user', content: chatMessage}]);
+      // Here you would typically send the message to your AI service and get a response
+      // For now, we'll just simulate a response
+      setTimeout(() => {
+        setChatHistory(prev => [...prev, {role: 'assistant', content: "This is a simulated AI response."}]);
+      }, 1000);
+      setChatMessage('');
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-800 shadow-md">
-        <div className="p-4">
-          <h1 className="text-2xl font-bold text-teal-300">TherapyAI</h1>
+    <div className="space-y-6 p-6 bg-gray-50">
+      <header className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="icon" className="text-gray-600 hover:text-primary-600 transition-colors duration-200">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <Avatar>
+            <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
         </div>
-        <nav className="mt-8">
-          <a href="#" className="flex items-center px-4 py-2 text-gray-300 bg-gray-700">
-            <Home className="mr-3 h-5 w-5" />
-            Dashboard
-          </a>
-          <a href="/clients" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
-            <Users className="mr-3 h-5 w-5" />
-            Clients
-          </a>
-          <a href="#" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
-            <FileText className="mr-3 h-5 w-5" />
-            Notes
-          </a>
-          <a href="#" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
-            <Calendar className="mr-3 h-5 w-5" />
-            Schedule
-          </a>
-          <a href="#" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
-            <MessageSquare className="mr-3 h-5 w-5" />
-            AI Assistant
-          </a>
-          <a href="#" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
-            <Settings className="mr-3 h-5 w-5" />
-            Settings
-          </a>
-          <a href="/knowledge-base" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
-            <Book className="mr-3 h-5 w-5" />
-            Knowledge Base
-          </a>
-        </nav>
-      </aside>
+      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-hidden flex flex-col">
-        {/* Header */}
-        <header className="bg-gray-800 shadow-sm">
-          <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h2 className="text-2xl font-bold leading-7 text-teal-300 sm:truncate">Dashboard</h2>
-            <div className="flex items-center">
-              <Button variant="outline" size="icon" className="mr-2 text-gray-300 hover:text-teal-300 transition-colors duration-200">
-                <Bell className="h-4 w-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div 
+          className="lg:col-span-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="bg-white shadow-md">
+            <CardHeader className="bg-primary-50 border-b border-primary-100">
+              <CardTitle className="text-xl text-primary-800">AI Assistant</CardTitle>
+              <CardDescription className="text-primary-600">Chat with your AI assistant for case discussions and support</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <ScrollArea className="h-[300px] mb-4">
+                {chatHistory.map((message, index) => (
+                  <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    <span className={`inline-block p-2 rounded-lg ${message.role === 'user' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {message.content}
+                    </span>
+                  </div>
+                ))}
+              </ScrollArea>
+              <form onSubmit={sendChatMessage} className="flex space-x-2">
+                <Input
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  placeholder="Ask a question..."
+                  className="flex-grow"
+                />
+                <Button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="bg-white shadow-md">
+            <CardHeader className="bg-primary-50 border-b border-primary-100">
+              <CardTitle className="text-xl text-primary-800">Today's Schedule</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <ScrollArea className="h-[300px]">
+                {clients.slice(0, 5).map((client) => (
+                  <div key={client.id} className="flex items-center mb-4 p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                    <Avatar className="h-10 w-10 mr-3">
+                      <AvatarFallback>{formatName(client.name).charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow">
+                      <p className="font-medium text-gray-800">{formatName(client.name)}</p>
+                      <p className="text-sm text-gray-600">{client.nextSession || 'Not scheduled'}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-primary-600">
+                      <Calendar className="h-4 w-4 mr-1" /> Schedule
+                    </Button>
+                  </div>
+                ))}
+              </ScrollArea>
+              <Button onClick={() => setIsAddClientModalOpen(true)} className="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white">
+                <Plus className="mr-2 h-4 w-4" /> Add New Client
               </Button>
-              <Avatar>
-                <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
-                <AvatarFallback>JD</AvatarFallback>
-              </Avatar>
-            </div>
-          </div>
-        </header>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        {/* Dashboard Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div className="px-4 py-6 sm:px-0">
-              <div className="flex flex-col gap-6">
-                {/* AI Assistant Chat */}
-                <Card className="flex-1 bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10">
-                  <CardHeader>
-                    <CardTitle className="text-teal-300">AI Assistant</CardTitle>
-                    <CardDescription className="text-gray-400">Chat with your AI assistant for case discussions and support</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col h-[400px]">
-                    <ScrollArea className="flex-1 pr-4">
-                      <div className="space-y-4">
-                        {chatHistory.map((message, index) => (
-                          <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[70%] p-3 rounded-lg ${message.role === 'user' ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-100'}`}>
-                              <p className="text-sm">{message.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                  <CardFooter>
-                    <form onSubmit={sendChatMessage} className="flex w-full items-center space-x-2">
-                      <Input
-                        type="text"
-                        placeholder="Ask a question..."
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        className="bg-gray-700 text-gray-100 border-gray-600 focus:border-teal-500 transition-colors duration-200"
-                      />
-                      <Button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white transition-colors duration-200">Send</Button>
-                    </form>
-                  </CardFooter>
-                </Card>
-
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  {/* Client Overview */}
-                  <Card className="lg:col-span-2 bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10">
-                    <CardHeader>
-                      <CardTitle className="text-teal-300">Client Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Array.isArray(clients) && clients.length > 0 ? (
-                          clients.map((client) => (
-                            <div key={client.name} className="flex items-center">
-                              <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-teal-600 text-white">{client.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                              </Avatar>
-                              <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-100">{client.name}</p>
-                                <p className="text-sm text-gray-400">Next session: {client.nextSession}</p>
-                              </div>
-                              <Button variant="outline" size="sm" className="ml-auto text-teal-300 border-teal-500/50 hover:bg-teal-600 hover:text-white transition-colors duration-200">
-                                View Profile
-                              </Button>
-                            </div>
-                          ))
-                        ) : (
-                          <p>No clients found</p>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button 
-                        variant="outline" 
-                        className="w-full text-teal-300 border-teal-500/50 hover:bg-teal-600 hover:text-white transition-colors duration-200"
-                        onClick={() => setIsAddClientModalOpen(true)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" /> Add New Client
-                      </Button>
-                    </CardFooter>
-                  </Card>
-
-                  {/* Workload Management */}
-                  <Card className="bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10">
-                    <CardHeader>
-                      <CardTitle className="text-teal-300">Workload</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-sm font-medium">
-                            <span className="text-gray-300">Clients this week</span>
-                            <span className="text-teal-300">{workload.clientsThisWeek}/{workload.totalClients}</span>
-                          </div>
-                          <Progress value={(workload.clientsThisWeek / workload.totalClients) * 100} className="mt-2" />
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm font-medium">
-                            <span className="text-gray-300">Notes to complete</span>
-                            <span className="text-teal-300">{workload.notesToComplete}</span>
-                          </div>
-                          <Progress value={(workload.notesToComplete / 10) * 100} className="mt-2" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+        <motion.div
+          className="lg:col-span-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <Card className="bg-white shadow-md">
+            <CardHeader className="bg-primary-50 border-b border-primary-100">
+              <CardTitle className="text-xl text-primary-800">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 grid grid-cols-2 gap-4">
+              <Button variant="outline" className="flex justify-between items-center text-left">
+                <div>
+                  <p className="font-medium">Create Note</p>
+                  <p className="text-sm text-gray-600">Add a new session note</p>
                 </div>
+                <FileText className="h-5 w-5 text-primary-600" />
+              </Button>
+              <Button variant="outline" className="flex justify-between items-center text-left">
+                <div>
+                  <p className="font-medium">Schedule Session</p>
+                  <p className="text-sm text-gray-600">Book a new appointment</p>
+                </div>
+                <Calendar className="h-5 w-5 text-primary-600" />
+              </Button>
+              <Button variant="outline" className="flex justify-between items-center text-left">
+                <div>
+                  <p className="font-medium">View Clients</p>
+                  <p className="text-sm text-gray-600">Manage your client list</p>
+                </div>
+                <Users className="h-5 w-5 text-primary-600" />
+              </Button>
+              <Button variant="outline" className="flex justify-between items-center text-left">
+                <div>
+                  <p className="font-medium">AI Insights</p>
+                  <p className="text-sm text-gray-600">Get AI-powered analytics</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-primary-600" />
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  {/* Recent Notes */}
-                  <Card className="lg:col-span-2 bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10">
-                    <CardHeader>
-                      <CardTitle className="text-teal-300">Recent Notes</CardTitle>
-                      <CardDescription className="text-gray-400">Click to edit or create a new note</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {notes.map((note, index) => (
-                          <div key={index} className="flex items-center">
-                            <Clipboard className="h-5 w-5 text-teal-400" />
-                            <span className="ml-2 text-sm text-gray-300">{note}</span>
-                            <Button variant="ghost" size="sm" className="ml-auto text-teal-300 hover:text-teal-100 hover:bg-gray-700 transition-colors duration-200">
-                              Edit
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <div className="flex w-full items-center space-x-2">
-                        <Input type="text" placeholder="Dictate new note..." className="bg-gray-700 text-gray-100 border-gray-600 focus:border-teal-500 transition-colors duration-200" />
-                        <Button size="icon" onClick={startRecording} className="bg-teal-600 hover:bg-teal-700 text-white transition-colors duration-200">
-                          {isRecording ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
-
-                  {/* AI Insights */}
-                  <Card className="bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10">
-                    <CardHeader>
-                      <CardTitle className="text-teal-300">AI Insights</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Tabs defaultValue="trends">
-                        <TabsList className="grid w-full grid-cols-2 bg-gray-700">
-                          <TabsTrigger value="trends" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white transition-colors duration-200">
-                            Trends
-                          </TabsTrigger>
-                          <TabsTrigger value="predictions" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white transition-colors duration-200">
-                            Predictions
-                          </TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="trends">
-                          <p className="text-sm text-gray-300">{insights.trends}</p>
-                        </TabsContent>
-                        <TabsContent value="predictions">
-                          <p className="text-sm text-gray-300">{insights.predictions}</p>
-                        </TabsContent>
-                      </Tabs>
-                    </CardContent>
-                  </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <Card className="bg-white shadow-md">
+            <CardHeader className="bg-primary-50 border-b border-primary-100">
+              <CardTitle className="text-xl text-primary-800">Workload</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Clients this week</span>
+                    <span className="text-gray-800 font-medium">{workload.clientsThisWeek}/{workload.totalClients}</span>
+                  </div>
+                  <Progress value={(workload.clientsThisWeek / workload.totalClients) * 100} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Notes to complete</span>
+                    <span className="text-gray-800 font-medium">{workload.notesToComplete}</span>
+                  </div>
+                  <Progress value={(workload.notesToComplete / 10) * 100} className="h-2" />
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </main>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div 
+          className="lg:col-span-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+        >
+          <Card className="bg-white shadow-md">
+            <CardHeader className="bg-primary-50 border-b border-primary-100">
+              <CardTitle className="text-xl text-primary-800">Recent Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <ScrollArea className="h-[200px]">
+                {/* Replace with actual recent notes data */}
+                {[1, 2, 3, 4, 5].map((_, index) => (
+                  <div key={index} className="flex items-center mb-4 p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                    <FileText className="h-6 w-6 text-primary-600 mr-3" />
+                    <div className="flex-grow">
+                      <p className="font-medium text-gray-800">Note Title {index + 1}</p>
+                      <p className="text-sm text-gray-600">Client Name • {new Date().toLocaleDateString()}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-primary-600 hover:text-primary-700">
+                      View
+                    </Button>
+                  </div>
+                ))}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
       <AddClientModal
         isOpen={isAddClientModalOpen}
         onClose={() => setIsAddClientModalOpen(false)}

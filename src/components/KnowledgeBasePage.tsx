@@ -4,37 +4,31 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { searchDocuments, uploadDocument } from '@/utils/healthLakeUtils';
 
-interface File {
+// Move this interface to src/types.ts
+interface Document {
   id: string;
-  content: { attachment: { title: string } }[];
+  title: string;
+  content: string;
 }
 
 const KnowledgeBasePage: React.FC = () => {
-  const [files, setFiles] = useState<File[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchFiles();
+    fetchDocuments();
   }, []);
 
-  const fetchFiles = async () => {
+  const fetchDocuments = async () => {
     try {
-      const response = await fetch('/api/healthlake');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setFiles(data);
-      } else {
-        console.error('Received data is not an array:', data);
-        setError('Received invalid data format');
-      }
+      const fetchedDocuments = await searchDocuments();
+      setDocuments(fetchedDocuments);
     } catch (error) {
-      console.error('Error fetching files:', error);
-      setError('Failed to fetch files');
+      console.error('Error fetching documents:', error);
+      setError('Failed to fetch documents');
     }
   };
 
@@ -46,54 +40,27 @@ const KnowledgeBasePage: React.FC = () => {
     reader.onload = async (e) => {
       const content = e.target?.result as string;
       try {
-        const response = await fetch('/api/healthlake', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'uploadFile',
-            data: {
-              filename: file.name,
-              contentType: file.type,
-              content: content
-            }
-          })
+        const uploadedDocument = await uploadDocument({
+          title: file.name,
+          content: content,
+          contentType: file.type,
         });
-        if (response.ok) {
-          fetchFiles();
-        } else {
-          setError('Failed to upload file');
-        }
+        setDocuments(prevDocuments => [...prevDocuments, uploadedDocument]);
       } catch (error) {
-        console.error('Error uploading file:', error);
-        setError('Error uploading file');
+        console.error('Error uploading document:', error);
+        setError('Failed to upload document');
       }
     };
-    reader.readAsDataURL(file);
+    reader.readAsText(file);
   };
 
   const handleSearch = async () => {
     try {
-      const response = await fetch('/api/healthlake', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'searchFiles',
-          data: { searchTerm }
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setFiles(data);
-      } else {
-        console.error('Received search data is not an array:', data);
-        setError('Received invalid search results');
-      }
+      const searchResults = await searchDocuments(searchTerm);
+      setDocuments(searchResults);
     } catch (error) {
-      console.error('Error searching files:', error);
-      setError('Failed to search files');
+      console.error('Error searching documents:', error);
+      setError('Failed to search documents');
     }
   };
 
@@ -133,10 +100,10 @@ const KnowledgeBasePage: React.FC = () => {
           <CardDescription>List of files in the knowledge base</CardDescription>
         </CardHeader>
         <CardContent>
-          {Array.isArray(files) && files.length > 0 ? (
-            files.map((file) => (
-              <div key={file.id} className="mb-2">
-                {file.content[0]?.attachment?.title || 'Untitled'}
+          {Array.isArray(documents) && documents.length > 0 ? (
+            documents.map((document) => (
+              <div key={document.id} className="mb-2">
+                {document.title}
               </div>
             ))
           ) : (

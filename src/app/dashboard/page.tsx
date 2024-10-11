@@ -1,5 +1,5 @@
-import TherapistDashboard from '@/components/TherapistDashboard'
+import { TherapistDashboard } from '@/components/TherapistDashboard';
 
 export default function DashboardPage() {
-  return <TherapistDashboard />
+  return <TherapistDashboard />;
 }

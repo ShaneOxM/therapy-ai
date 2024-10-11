@@ -7,7 +7,7 @@ import axios from 'axios';
 import { SignatureV4 } from "@aws-sdk/signature-v4";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { HttpRequest } from "@aws-sdk/protocol-http";
-import { Client, ClientData } from '@/types';
+import { Client, ClientData, Document } from '@/types';
 
 // Remove this redundant interface
 // interface Client extends ClientData {
@@ -267,4 +267,118 @@ export async function tagResource(resourceArn: string, tags: { [key: string]: st
 
   const response = await client.send(command);
   return response;
+}
+
+interface HealthLakeDocumentEntry {
+  resource: {
+    id: string;
+    content: Array<{
+      attachment?: {
+        title?: string;
+        data?: string;
+      };
+    }>;
+  };
+}
+
+export async function searchDocuments(searchTerm?: string): Promise<Document[]> {
+  const url = `${process.env.AWS_HEALTHLAKE_ENDPOINT}/DocumentReference${searchTerm ? `?title=${searchTerm}` : ''}`;
+
+  try {
+    const signedHeaders = await getAwsSignedRequest(url, 'GET');
+    const response = await axios.get<{ entry?: HealthLakeDocumentEntry[] }>(url, { headers: signedHeaders });
+
+    if (!response.data.entry) {
+      return [];
+    }
+
+    return response.data.entry.map((entry: HealthLakeDocumentEntry) => ({
+      id: entry.resource.id,
+      title: entry.resource.content[0]?.attachment?.title || 'Untitled',
+      content: entry.resource.content[0]?.attachment?.data || '',
+    }));
+  } catch (error) {
+    console.error('Error searching documents:', error);
+    throw error;
+  }
+}
+
+export async function uploadDocument(document: { title: string; content: string; contentType: string }): Promise<Document> {
+  const url = `${process.env.AWS_HEALTHLAKE_ENDPOINT}/DocumentReference`;
+
+  const documentResource = {
+    resourceType: "DocumentReference",
+    status: "current",
+    content: [
+      {
+        attachment: {
+          contentType: document.contentType,
+          data: btoa(document.content),
+          title: document.title,
+        },
+      },
+    ],
+  };
+
+  try {
+    const signedHeaders = await getAwsSignedRequest(url, 'POST');
+    const response = await axios.post(url, documentResource, {
+      headers: {
+        ...signedHeaders,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return {
+      id: response.data.id,
+      title: document.title,
+      content: document.content,
+    };
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    throw error;
+  }
+}
+
+export async function createNote(clientId: string, content: string): Promise<any> {
+  const url = `${process.env.AWS_HEALTHLAKE_ENDPOINT}/DocumentReference`;
+  const noteResource = {
+    resourceType: "DocumentReference",
+    subject: {
+      reference: `Patient/${clientId}`
+    },
+    content: [
+      {
+        attachment: {
+          contentType: "text/plain",
+          data: btoa(content)
+        }
+      }
+    ],
+    type: {
+      coding: [
+        {
+          system: "http://loinc.org",
+          code: "11506-3",
+          display: "Progress note"
+        }
+      ]
+    },
+    status: "current"
+  };
+
+  try {
+    const signedHeaders = await getAwsSignedRequest(url, 'POST');
+    const response = await axios.post(url, noteResource, {
+      headers: {
+        ...signedHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error creating note:', error);
+    throw error;
+  }
 }
