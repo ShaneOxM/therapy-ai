@@ -1,10 +1,8 @@
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
-- questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
+
+New features:
+
+- Questions for supervisor to use in weekly supervison meetings based on urgency and notes from weekly meetings
+- Add questions section to weekly folders for notes for each client
+- Research outside of session at forefront of the app, need to emphasize research, support resources, and interventions that you can do in session with a client
+
+

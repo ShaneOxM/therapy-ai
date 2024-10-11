@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react'
-import { Bell, Plus, Send, Mic, Calendar, FileText, Users, ChevronRight } from 'lucide-react'
+import { Bell, Plus, Send, Calendar, FileText, Users, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
@@ -10,7 +10,6 @@ import { Progress } from "./ui/progress"
 import { ScrollArea } from "./ui/scroll-area"
 import AddClientModal from './AddClientModal';
 import { Client, ClientData } from '@/types';
-import { NotesComponent } from './NotesComponent';
 import { motion } from "framer-motion";
 
 function formatName(name: ClientData['name']): string {
@@ -34,7 +33,7 @@ export const TherapistDashboard: React.FC = () => {
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{role: 'user' | 'assistant', content: string}[]>([
-    {role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you with your cases today?"}
+    {role: 'assistant', content: "Hello! I\u2019m your AI assistant. How can I help you with your cases today?"}
   ]);
   const [workload, setWorkload] = useState({
     clientsThisWeek: 0,
@@ -138,7 +137,8 @@ export const TherapistDashboard: React.FC = () => {
                 {chatHistory.map((message, index) => (
                   <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
                     <span className={`inline-block p-2 rounded-lg ${message.role === 'user' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {message.content}
+                      {/* Use dangerouslySetInnerHTML to render the content */}
+                      <span dangerouslySetInnerHTML={{ __html: message.content }} />
                     </span>
                   </div>
                 ))}

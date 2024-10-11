@@ -2,7 +2,6 @@ import {
   HealthLakeClient, 
   CreateFHIRDatastoreCommand, 
   TagResourceCommand,
-  StartFHIRExportJobCommand
 } from "@aws-sdk/client-healthlake";
 import axios from 'axios';
 import { SignatureV4 } from "@aws-sdk/signature-v4";
@@ -327,7 +326,7 @@ export async function uploadDocument(document: { title: string; content: string;
   }
 }
 
-export async function createNote(clientId: string, content: string): Promise<any> {
+export async function createNote(clientId: string, content: string): Promise<Document> {
   const url = `${process.env.AWS_HEALTHLAKE_ENDPOINT}/DocumentReference`;
   const noteResource = {
     resourceType: "DocumentReference",
@@ -356,7 +355,7 @@ export async function createNote(clientId: string, content: string): Promise<any
 
   try {
     const signedHeaders = await getAwsSignedRequest(url, 'POST');
-    const response = await axios.post<HealthLakeResponse<any>>(url, noteResource, {
+    const response = await axios.post<HealthLakeResponse<Document>>(url, noteResource, {
       headers: {
         ...signedHeaders,
         'Content-Type': 'application/json'

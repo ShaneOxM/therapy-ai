@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Client } from '@/types';
 import { startSpeechRecognition } from '@/utils/speechRecognition';
+import { SpeechRecognition } from '@/utils/speechRecognition';
 
 interface NotesComponentProps {
   clients: Client[];
@@ -13,7 +14,7 @@ export const NotesComponent: React.FC<NotesComponentProps> = ({ clients }) => {
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [isRecording, setIsRecording] = useState(false);
   const [note, setNote] = useState('');
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const startRecording = () => {
     setIsRecording(true);

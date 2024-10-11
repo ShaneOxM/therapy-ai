@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AddClientModal from './AddClientModal';
 import { Client, ClientData } from '@/types';
-import { searchClients, createClient } from '@/utils/healthLakeUtils';
+import { createClient } from '@/utils/healthLakeUtils';
 
 // Add this helper function at the top of the file
 function formatName(name: ClientData['name']): string {
