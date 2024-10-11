@@ -2,11 +2,14 @@
   "name": "therapist-portal",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export-to-s3": "node --loader ts-node/esm scripts/exportToS3.ts",
+    "import-from-s3": "node --loader ts-node/esm scripts/importFromS3.ts"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",
@@ -16,11 +19,13 @@
     "@aws-sdk/signature-v4": "^3.370.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-label": "^2.1.0",
+    "@types/axios": "^0.9.36",
     "@types/uuid": "^10.0.0",
     "aws-sdk": "^2.1691.0",
     "axios": "^1.7.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
     "framer-motion": "^11.11.7",
     "next": "14.2.15",
     "react": "^18",
@@ -36,6 +41,7 @@
     "eslint-config-next": "14.2.15",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

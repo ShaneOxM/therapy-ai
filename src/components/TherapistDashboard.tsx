@@ -41,6 +41,7 @@ export const TherapistDashboard: React.FC = () => {
     totalClients: 0,
     notesToComplete: 0,
   });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData()
@@ -61,6 +62,7 @@ export const TherapistDashboard: React.FC = () => {
       setWorkload(workloadData);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setError('Failed to load dashboard data. Please try again later.');
     }
   };
 
@@ -100,6 +102,12 @@ export const TherapistDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6 bg-gray-50">
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error:</strong>
+          <span className="block sm:inline"> {error}</span>
+        </div>
+      )}
       <header className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
         <div className="flex items-center space-x-4">

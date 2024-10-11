@@ -42,8 +42,12 @@ const ClientsPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedClients = await searchClients();
-      setClients(fetchedClients);
+      const response = await fetch('/api/clients');
+      if (!response.ok) {
+        throw new Error('Failed to fetch clients');
+      }
+      const data = await response.json();
+      setClients(data);
     } catch (error) {
       console.error('Error fetching clients:', error);
       setError('Failed to load clients. Please try again later.');
@@ -71,27 +75,27 @@ const ClientsPage: React.FC = () => {
   return (
     <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-teal-300">Clients</h1>
-      <Card className="bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10 mb-6">
-        <CardHeader>
-          <CardTitle className="text-teal-300">Client Management</CardTitle>
-          <CardDescription className="text-gray-400">Search and manage your clients</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-2 mb-4">
-            <Input
-              type="text"
-              placeholder="Search clients..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-gray-700 text-gray-100 border-gray-600 focus:border-teal-500"
-            />
-            <Button onClick={() => setIsAddClientModalOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white">Add New Client</Button>
-          </div>
-          {isLoading ? (
-            <p>Loading clients...</p>
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : (
+      {isLoading ? (
+        <p>Loading clients...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
+      ) : (
+        <Card className="bg-gray-800 border-teal-500/50 shadow-lg shadow-teal-500/10 mb-6">
+          <CardHeader>
+            <CardTitle className="text-teal-300">Client Management</CardTitle>
+            <CardDescription className="text-gray-400">Search and manage your clients</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex space-x-2 mb-4">
+              <Input
+                type="text"
+                placeholder="Search clients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-gray-700 text-gray-100 border-gray-600 focus:border-teal-500"
+              />
+              <Button onClick={() => setIsAddClientModalOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white">Add New Client</Button>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -140,9 +144,9 @@ const ClientsPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
       <AddClientModal
         isOpen={isAddClientModalOpen}
         onClose={() => setIsAddClientModalOpen(false)}

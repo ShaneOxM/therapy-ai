@@ -2,22 +2,13 @@ import {
   HealthLakeClient, 
   CreateFHIRDatastoreCommand, 
   TagResourceCommand,
+  StartFHIRExportJobCommand
 } from "@aws-sdk/client-healthlake";
 import axios from 'axios';
 import { SignatureV4 } from "@aws-sdk/signature-v4";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { Client, ClientData, Document } from '@/types';
-
-// Remove this redundant interface
-// interface Client extends ClientData {
-//   id: string;
-//   extension?: Array<{
-//     url: string;
-//     valueString?: string;
-//     valueDateTime?: string;
-//   }>;
-// }
 
 console.log('Environment variables in healthLakeUtils:');
 console.log('AWS_REGION:', process.env.AWS_REGION);
@@ -72,6 +63,10 @@ async function getAwsSignedRequest(url: string, method: string): Promise<Record<
   return signedRequest.headers as Record<string, string>;
 }
 
+interface HealthLakeResponse<T> {
+  data: T;
+}
+
 export async function searchClients(searchTerm?: string): Promise<Client[]> {
   console.log('Starting searchClients function');
   console.log('Search term:', searchTerm);
@@ -88,7 +83,7 @@ export async function searchClients(searchTerm?: string): Promise<Client[]> {
     const signedHeaders = await getAwsSignedRequest(url, 'GET');
     console.log('Signed Headers:', JSON.stringify(signedHeaders, null, 2));
 
-    const response = await axios.get(url, { 
+    const response = await axios.get<HealthLakeResponse<{ entry?: { resource: Client }[] }>>(url, { 
       headers: signedHeaders,
       validateStatus: function (status) {
         return status < 500; // Resolve only if the status code is less than 500
@@ -104,20 +99,15 @@ export async function searchClients(searchTerm?: string): Promise<Client[]> {
       throw new Error('Authentication failed');
     }
 
-    if (!response.data.entry) {
+    if (!response.data.data.entry) {
       console.warn('No entries found in HealthLake response');
       return [];
     }
 
-    return response.data.entry.map((entry: { resource: Client }) => entry.resource);
+    return response.data.data.entry.map(entry => entry.resource);
   } catch (error) {
     console.error('Error searching clients:', error);
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error details:', error.response?.data);
-      console.error('Axios error status:', error.response?.status);
-      console.error('Axios error headers:', JSON.stringify(error.response?.headers, null, 2));
-    }
-    throw error;
+    throw new Error('Failed to search clients');
   }
 }
 
@@ -145,7 +135,7 @@ export async function createClient(clientData: ClientData): Promise<Client> {
     const signedHeaders = await getAwsSignedRequest(url, 'POST');
     console.log('Signed Headers:', signedHeaders);
 
-    const response = await axios.post(url, patientResource, { 
+    const response = await axios.post<HealthLakeResponse<Client>>(url, patientResource, { 
       headers: {
         ...signedHeaders,
         'Content-Type': 'application/json'
@@ -153,13 +143,10 @@ export async function createClient(clientData: ClientData): Promise<Client> {
     });
 
     console.log('HealthLake Response:', response.data);
-    return response.data;
+    return response.data.data;
   } catch (error) {
     console.error('Error creating client:', error);
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error details:', error.response?.data);
-    }
-    throw error;
+    throw new Error('Failed to create client');
   }
 }
 
@@ -180,16 +167,16 @@ export async function getClient(id: string): Promise<Client> {
   const url = `https://${healthLakeEndpoint}/datastore/${datastoreId}/r4/Patient/${id}`;
 
   try {
-    const response = await axios.get(url, {
+    const response = await axios.get<HealthLakeResponse<Client>>(url, {
       headers: {
         'Authorization': `Bearer ${await getAwsSignedRequest(url, 'GET')}`,
       },
     });
 
-    return response.data;
+    return response.data.data;
   } catch (error) {
     console.error('Error getting client:', error);
-    throw error;
+    throw new Error('Failed to get client');
   }
 }
 
@@ -214,17 +201,17 @@ export async function updateClient(id: string, clientData: Partial<ClientData>):
   };
 
   try {
-    const response = await axios.put(url, updatedResource, {
+    const response = await axios.put<HealthLakeResponse<Client>>(url, updatedResource, {
       headers: {
         'Authorization': `Bearer ${await getAwsSignedRequest(url, 'PUT')}`,
         'Content-Type': 'application/json',
       },
     });
 
-    return response.data;
+    return response.data.data;
   } catch (error) {
     console.error('Error updating client:', error);
-    throw error;
+    throw new Error('Failed to update client');
   }
 }
 
@@ -322,7 +309,7 @@ export async function uploadDocument(document: { title: string; content: string;
 
   try {
     const signedHeaders = await getAwsSignedRequest(url, 'POST');
-    const response = await axios.post(url, documentResource, {
+    const response = await axios.post<HealthLakeResponse<{ id: string }>>(url, documentResource, {
       headers: {
         ...signedHeaders,
         'Content-Type': 'application/json',
@@ -330,13 +317,13 @@ export async function uploadDocument(document: { title: string; content: string;
     });
 
     return {
-      id: response.data.id,
+      id: response.data.data.id,
       title: document.title,
       content: document.content,
     };
   } catch (error) {
     console.error('Error uploading document:', error);
-    throw error;
+    throw new Error('Failed to upload document');
   }
 }
 
@@ -369,16 +356,16 @@ export async function createNote(clientId: string, content: string): Promise<any
 
   try {
     const signedHeaders = await getAwsSignedRequest(url, 'POST');
-    const response = await axios.post(url, noteResource, {
+    const response = await axios.post<HealthLakeResponse<any>>(url, noteResource, {
       headers: {
         ...signedHeaders,
         'Content-Type': 'application/json'
       }
     });
 
-    return response.data;
+    return response.data.data;
   } catch (error) {
     console.error('Error creating note:', error);
-    throw error;
+    throw new Error('Failed to create note');
   }
 }
