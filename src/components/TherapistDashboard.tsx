@@ -9,6 +9,7 @@ import { Input } from "./ui/input"
 import { Progress } from "./ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import { ScrollArea } from "./ui/scroll-area"
+import AddClientModal from './AddClientModal';
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -42,6 +43,7 @@ export default function TherapistDashboard() {
   const [notes, setNotes] = useState<string[]>([])
   const [workload, setWorkload] = useState<Workload>({ clientsThisWeek: 0, totalClients: 0, notesToComplete: 0 })
   const [insights, setInsights] = useState<Insights>({ trends: '', predictions: '' })
+  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData()
@@ -54,21 +56,29 @@ export default function TherapistDashboard() {
         fetch('/api/notes'),
         fetch('/api/workload'),
         fetch('/api/insights')
-      ])
+      ]);
       
-      const clientsData: Client[] = await clientsRes.json()
-      const notesData: string[] = await notesRes.json()
-      const workloadData: Workload = await workloadRes.json()
-      const insightsData: Insights = await insightsRes.json()
+      if (!clientsRes.ok) throw new Error('Failed to fetch clients');
+      const clientsData: Client[] = await clientsRes.json();
+      
+      if (!notesRes.ok) throw new Error('Failed to fetch notes');
+      const notesData: string[] = await notesRes.json();
+      
+      if (!workloadRes.ok) throw new Error('Failed to fetch workload');
+      const workloadData: Workload = await workloadRes.json();
+      
+      if (!insightsRes.ok) throw new Error('Failed to fetch insights');
+      const insightsData: Insights = await insightsRes.json();
 
-      setClients(clientsData)
-      setNotes(notesData)
-      setWorkload(workloadData)
-      setInsights(insightsData)
+      setClients(clientsData);
+      setNotes(notesData);
+      setWorkload(workloadData);
+      setInsights(insightsData);
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error fetching data:', error);
+      // Optionally set an error state here to display to the user
     }
-  }
+  };
 
   const startRecording = () => {
     setIsRecording(true)
@@ -95,6 +105,28 @@ export default function TherapistDashboard() {
     }
   }
 
+  const handleAddClient = async (newClient: Omit<Client, 'id'>) => {
+    try {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newClient),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add client');
+      }
+
+      const addedClient = await response.json();
+      setClients([...clients, addedClient]);
+    } catch (error) {
+      console.error('Error adding client:', error);
+      // You might want to show an error message to the user here
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       {/* Sidebar */}
@@ -107,7 +139,7 @@ export default function TherapistDashboard() {
             <Home className="mr-3 h-5 w-5" />
             Dashboard
           </a>
-          <a href="#" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
+          <a href="/clients" className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
             <Users className="mr-3 h-5 w-5" />
             Clients
           </a>
@@ -198,24 +230,32 @@ export default function TherapistDashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {clients.map((client) => (
-                          <div key={client.name} className="flex items-center">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-teal-600 text-white">{client.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-100">{client.name}</p>
-                              <p className="text-sm text-gray-400">Next session: {client.nextSession}</p>
+                        {Array.isArray(clients) && clients.length > 0 ? (
+                          clients.map((client) => (
+                            <div key={client.name} className="flex items-center">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-teal-600 text-white">{client.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                              </Avatar>
+                              <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-100">{client.name}</p>
+                                <p className="text-sm text-gray-400">Next session: {client.nextSession}</p>
+                              </div>
+                              <Button variant="outline" size="sm" className="ml-auto text-teal-300 border-teal-500/50 hover:bg-teal-600 hover:text-white transition-colors duration-200">
+                                View Profile
+                              </Button>
                             </div>
-                            <Button variant="outline" size="sm" className="ml-auto text-teal-300 border-teal-500/50 hover:bg-teal-600 hover:text-white transition-colors duration-200">
-                              View Profile
-                            </Button>
-                          </div>
-                        ))}
+                          ))
+                        ) : (
+                          <p>No clients found</p>
+                        )}
                       </div>
                     </CardContent>
                     <CardFooter>
-                      <Button variant="outline" className="w-full text-teal-300 border-teal-500/50 hover:bg-teal-600 hover:text-white transition-colors duration-200">
+                      <Button 
+                        variant="outline" 
+                        className="w-full text-teal-300 border-teal-500/50 hover:bg-teal-600 hover:text-white transition-colors duration-200"
+                        onClick={() => setIsAddClientModalOpen(true)}
+                      >
                         <Plus className="mr-2 h-4 w-4" /> Add New Client
                       </Button>
                     </CardFooter>
@@ -307,6 +347,11 @@ export default function TherapistDashboard() {
           </div>
         </div>
       </main>
+      <AddClientModal
+        isOpen={isAddClientModalOpen}
+        onClose={() => setIsAddClientModalOpen(false)}
+        onAddClient={handleAddClient}
+      />
     </div>
   )
 }

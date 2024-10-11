@@ -1,11 +1,27 @@
 import { NextResponse } from 'next/server';
+import { searchClients, createClient } from '@/utils/healthLakeUtils';
 
 export async function GET() {
-  const clients = [
-    { name: "John Doe", nextSession: "Today, 3:00 PM" },
-    { name: "Jane Smith", nextSession: "Tomorrow, 2:00 PM" },
-    { name: "Alex Johnson", nextSession: "Friday, 11:00 AM" },
-  ];
+  try {
+    const clients = await searchClients();
+    return NextResponse.json(clients);
+  } catch (error) {
+    console.error('Error in GET /api/clients:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
 
-  return NextResponse.json(clients);
+export async function POST(request: Request) {
+  try {
+    const clientData = await request.json();
+    console.log('Received client data:', clientData);
+    const newClient = await createClient(clientData);
+    return NextResponse.json(newClient, { status: 201 });
+  } catch (error) {
+    console.error('Error in POST /api/clients:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+    }
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
